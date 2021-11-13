@@ -5,6 +5,10 @@ const { ethers } = require('ethers');
 const tweet = require('./tweet');
 const cache = require('./cache');
 
+// TODO: Make into env variables
+const FOX_COLLECTION_SLUG = "";
+const SPOOKY_FOX_COLLECTION_SLUG = "";
+
 // Format tweet text
 function formatAndSendTweet(event) {
     // Handle both individual items + bundle sales
@@ -38,38 +42,42 @@ function formatAndSendTweet(event) {
     return tweet.tweet(tweetText);
 }
 
+const getParams = (slug, lastSaleTime) = ({
+    collection_slug: slug,
+    event_type: 'successful',
+    occurred_after: lastSaleTime,
+    only_opensea: 'false'
+});
+
+const getSortedEvents = (response) => {
+    const events = _.get(response, ['data', 'asset_events']);
+
+    return _.sortBy(events, function(event) {
+        const created = _.get(event, 'created_date');
+
+        return new Date(created);
+    });
+};
+
 // Poll OpenSea every 60 seconds & retrieve all sales for a given collection in either the time since the last sale OR in the last minute
 setInterval(() => {
     const lastSaleTime = cache.get('lastSaleTime', null) || moment().startOf('minute').subtract(59, "seconds").unix();
 
     console.log(`Last sale (in seconds since Unix epoch): ${cache.get('lastSaleTime', null)}`);
 
-    axios.get('https://api.opensea.io/api/v1/events', {
-        params: {
-            collection_slug: process.env.OPENSEA_COLLECTION_SLUG,
-            event_type: 'successful',
-            occurred_after: lastSaleTime,
-            only_opensea: 'false'
-        }
-    }).then((response) => {
-        const events = _.get(response, ['data', 'asset_events']);
+    const foxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(FOX_COLLECTION_SLUG, lastSaleTime) })
+    const spookyFoxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) })
 
-        const sortedEvents = _.sortBy(events, function(event) {
-            const created = _.get(event, 'created_date');
+    const allsortedEvents = [
+        ...getSortedEvents(foxResponse),
+        ...getSortedEvents(spookyFoxResponse)
+    ];
 
-            return new Date(created);
-        })
+    _.each(allsortedEvents, (event) => {
+        const created = _.get(event, 'created_date');
 
-        console.log(`${events.length} sales since the last one...`);
+        cache.set('lastSaleTime', moment(created).unix());
 
-        _.each(sortedEvents, (event) => {
-            const created = _.get(event, 'created_date');
-
-            cache.set('lastSaleTime', moment(created).unix());
-
-            return formatAndSendTweet(event);
-        });
-    }).catch((error) => {
-        console.error(error);
+        return formatAndSendTweet(event);
     });
 }, 60000);
