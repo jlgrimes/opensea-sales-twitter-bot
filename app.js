@@ -5,10 +5,6 @@ const { ethers } = require('ethers');
 const tweet = require('./tweet');
 const cache = require('./cache');
 
-// TODO: Make into env variables
-const FOX_COLLECTION_SLUG = "";
-const SPOOKY_FOX_COLLECTION_SLUG = "";
-
 // Format tweet text
 function formatAndSendTweet(event) {
     // Handle both individual items + bundle sales
@@ -65,8 +61,8 @@ setInterval(async () => {
 
     console.log(`Last sale (in seconds since Unix epoch): ${cache.get('lastSaleTime', null)}`);
 
-    const foxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(FOX_COLLECTION_SLUG, lastSaleTime) })
-    const spookyFoxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) })
+    const foxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(process.env.OPENSEA_COLLECTION_SLUG, lastSaleTime) })
+    const spookyFoxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(provess.env.SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) })
 
     const allsortedEvents = [
         ...getSortedEvents(foxResponse),
