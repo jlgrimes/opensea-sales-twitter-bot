@@ -38,7 +38,7 @@ function formatAndSendTweet(event) {
     return tweet.tweet(tweetText);
 }
 
-const getParams = (slug, lastSaleTime) = ({
+const getParams = (slug, lastSaleTime) => ({
     collection_slug: slug,
     event_type: 'successful',
     occurred_after: lastSaleTime,
