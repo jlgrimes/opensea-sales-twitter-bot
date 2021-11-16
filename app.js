@@ -62,7 +62,7 @@ setInterval(async () => {
     console.log(`Last sale (in seconds since Unix epoch): ${cache.get('lastSaleTime', null)}`);
 
     const foxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(process.env.OPENSEA_COLLECTION_SLUG, lastSaleTime) })
-    const spookyFoxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(provess.env.SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) })
+    const spookyFoxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(process.env.SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) })
 
     const allsortedEvents = [
         ...getSortedEvents(foxResponse),
