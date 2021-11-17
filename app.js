@@ -38,42 +38,53 @@ function formatAndSendTweet(event) {
     return tweet.tweet(tweetText);
 }
 
-const getParams = (slug, lastSaleTime) => ({
-    collection_slug: slug,
-    event_type: 'successful',
-    occurred_after: lastSaleTime,
-    only_opensea: 'false'
-});
+function getParams(slug, lastSaleTime) {
+    return {
+        collection_slug: slug,
+        event_type: 'successful',
+        occurred_after: lastSaleTime,
+        only_opensea: 'false'
+    };
+};
 
-const getSortedEvents = (response) => {
+function sendTweetFromResponse(response) {
     const events = _.get(response, ['data', 'asset_events']);
 
-    return _.sortBy(events, function(event) {
+    const sortedEvents = _.sortBy(events, function(event) {
         const created = _.get(event, 'created_date');
 
         return new Date(created);
-    });
-};
+    })
 
-// Poll OpenSea every 60 seconds & retrieve all sales for a given collection in either the time since the last sale OR in the last minute
-setInterval(async () => {
-    const lastSaleTime = cache.get('lastSaleTime', null) || moment().startOf('minute').subtract(59, "seconds").unix();
+    console.log(`${events.length} sales since the last one...`);
 
-    console.log(`Last sale (in seconds since Unix epoch): ${cache.get('lastSaleTime', null)}`);
-
-    const foxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(process.env.OPENSEA_COLLECTION_SLUG, lastSaleTime) })
-    const spookyFoxResponse = await axios.get('https://api.opensea.io/api/v1/events', { params: getParams(process.env.SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) })
-
-    const allsortedEvents = [
-        ...getSortedEvents(foxResponse),
-        ...getSortedEvents(spookyFoxResponse)
-    ];
-
-    _.each(allsortedEvents, (event) => {
+    _.each(sortedEvents, (event) => {
         const created = _.get(event, 'created_date');
 
         cache.set('lastSaleTime', moment(created).unix());
 
         return formatAndSendTweet(event);
+    });
+}
+
+// Poll OpenSea every 60 seconds & retrieve all sales for a given collection in either the time since the last sale OR in the last minute
+setInterval(() => {
+    const lastSaleTime = cache.get('lastSaleTime', null) || moment().startOf('minute').subtract(59, "seconds").unix();
+
+    console.log(`Last sale (in seconds since Unix epoch): ${cache.get('lastSaleTime', null)}`);
+
+    axios.get('https://api.opensea.io/api/v1/events', {
+        params: getParams(process.env.OPENSEA_COLLECTION_SLUG, lastSaleTime) 
+    }).then((foxResponse) => {
+        axios.get('https://api.opensea.io/api/v1/events', {
+            params: getParams(process.env.SPOOKY_FOX_COLLECTION_SLUG, lastSaleTime) 
+        }).then((spookyFoxResponse) => {
+            sendTweetFromResponse(foxResponse)
+            sendTweetFromResponse(spookyFoxResponse)
+        }).catch((error) => {
+            console.error(error);
+        });
+    }).catch((error) => {
+        console.error(error);
     });
 }, 60000);
